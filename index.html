@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Personal Protocol</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
+        
+        :root {
+            --bg: #0a0a0a; --card: #161616; --border: #252525;
+            --accent: #c9a84c; --text: #f0ede8; --muted: #6a6a6a;
+            --green: #4ade80; --blue: #60a5fa;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; line-height: 1.5; padding-bottom: 80px; }
+
+        /* Bottom Nav for Mobile / Top Nav for Desktop */
+        .nav { position: fixed; bottom: 0; left: 0; right: 0; background: rgba(10,10,10,0.95); backdrop-filter: blur(10px); border-top: 1px solid var(--border); z-index: 1000; }
+        .nav-inner { display: flex; justify-content: space-around; max-width: 600px; margin: 0 auto; padding: 10px 0; }
+        .nav-btn { background: none; border: none; color: var(--muted); font-size: 10px; font-weight: 600; text-transform: uppercase; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+        .nav-btn.active { color: var(--accent); }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .page { display: none; }
+        .page.active { display: block; }
+
+        /* UI Elements */
+        .card { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 20px; margin-bottom: 16px; }
+        .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 20px; }
+        .stat-box { background: var(--card); border: 1px solid var(--border); padding: 15px; border-radius: 12px; text-align: center; }
+        .stat-val { display: block; font-size: 24px; font-weight: 800; color: var(--accent); }
+        .stat-lbl { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+
+        .habit-item { display: flex; align-items: center; gap: 12px; padding: 14px; background: #1b1b1b; border: 1px solid var(--border); border-radius: 10px; margin-bottom: 8px; cursor: pointer; }
+        .habit-item.done { border-color: var(--green); opacity: 0.7; }
+        .check { width: 20px; height: 20px; border: 2px solid var(--border); border-radius: 6px; display: flex; align-items: center; justify-content: center; }
+        .done .check { background: var(--green); border-color: var(--green); }
+        
+        .input-group { margin-bottom: 15px; }
+        label { display: block; font-size: 11px; color: var(--muted); margin-bottom: 5px; text-transform: uppercase; }
+        input, select, textarea { width: 100%; background: #1b1b1b; border: 1px solid var(--border); color: #fff; padding: 12px; border-radius: 8px; outline: none; }
+        
+        .btn-save { width: 100%; background: var(--accent); color: #000; border: none; padding: 15px; border-radius: 10px; font-weight: 800; margin-top: 10px; cursor: pointer; }
+        
+        h1 { font-size: 28px; font-weight: 800; margin-bottom: 10px; letter-spacing: -1px; }
+        h2 { font-size: 18px; margin-bottom: 15px; color: var(--accent); }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div id="home" class="page active">
+            <h1>Today</h1>
+            <div class="stat-grid">
+                <div class="stat-box"><span class="stat-val" id="display-day">1</span><span class="stat-lbl">Day</span></div>
+                <div class="stat-box"><span class="stat-val" id="display-streak">0</span><span class="stat-lbl">Streak</span></div>
+            </div>
+
+            <div class="card">
+                <h2>Daily Rituals</h2>
+                <div id="habit-list">
+                    </div>
+            </div>
+        </div>
+
+        <div id="training" class="page">
+            <h1>Training</h1>
+            <div class="card">
+                <div class="input-group">
+                    <label>Workout Type</label>
+                    <select id="workout-type">
+                        <option>Push (Chest/Shoulders)</option>
+                        <option>Pull (Back/Biceps)</option>
+                        <option>Legs</option>
+                        <option>Rest Day</option>
+                    </select>
+                </div>
+                <textarea placeholder="Log your sets/reps here..." rows="5" id="workout-notes"></textarea>
+                <button class="btn-save" onclick="saveData()">Save Workout</button>
+            </div>
+        </div>
+
+        <div id="settings" class="page">
+            <h1>Settings</h1>
+            <div class="card">
+                <div class="input-group">
+                    <label>Start Date</label>
+                    <input type="date" id="start-date">
+                </div>
+                <div class="input-group">
+                    <label>Current Goal</label>
+                    <input type="text" id="user-goal" placeholder="e.g. 55kg to 70kg">
+                </div>
+                <button class="btn-save" onclick="updateSettings()">Apply Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <nav class="nav">
+        <div class="nav-inner">
+            <button class="nav-btn active" onclick="showPage('home')"><span>🏠</span>Today</button>
+            <button class="nav-btn" onclick="showPage('training')"><span>💪</span>Training</button>
+            <button class="nav-btn" onclick="showPage('settings')"><span>⚙️</span>Settings</button>
+        </div>
+    </nav>
+
+    <script>
+        let state = JSON.parse(localStorage.getItem('trackerState')) || {
+            startDate: new Date().toISOString().split('T')[0],
+            goal: "55kg to 70kg",
+            habits: [
+                { id: 1, text: "Drink 3L Water", done: false },
+                { id: 2, text: "Read 10 Pages", done: false },
+                { id: 3, text: "Morning Stretch", done: false }
+            ],
+            history: {}
+        };
+
+        function showPage(id) {
+            document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        function renderHabits() {
+            const list = document.getElementById('habit-list');
+            list.innerHTML = state.habits.map(h => `
+                <div class="habit-item ${h.done ? 'done' : ''}" onclick="toggleHabit(${h.id})">
+                    <div class="check">${h.done ? '✓' : ''}</div>
+                    <span>${h.text}</span>
+                </div>
+            `).join('');
+        }
+
+        function toggleHabit(id) {
+            const habit = state.habits.find(h => h.id === id);
+            habit.done = !habit.done;
+            save();
+            renderHabits();
+        }
+
+        function updateSettings() {
+            state.startDate = document.getElementById('start-date').value;
+            state.goal = document.getElementById('user-goal').value;
+            save();
+            alert("Settings Saved");
+        }
+
+        function save() {
+            localStorage.setItem('trackerState', JSON.stringify(state));
+            updateStats();
+        }
+
+        function updateStats() {
+            const start = new Date(state.startDate);
+            const today = new Date();
+            const diff = Math.floor((today - start) / (1000 * 60 * 60 * 24)) + 1;
+            document.getElementById('display-day').textContent = diff > 0 ? diff : 1;
+            document.getElementById('start-date').value = state.startDate;
+            document.getElementById('user-goal').value = state.goal;
+        }
+
+        // Initialize
+        updateStats();
+        renderHabits();
+    </script>
+</body>
+</html>
